@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>生成占位照片</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif;
+      background: #f5f5f7;
+      color: #1d1d1f;
+      padding: 24px;
+      max-width: 800px;
+      margin: 0 auto;
+    }
+    h1 { font-size: 24px; margin-bottom: 8px; }
+    .subtitle { color: #86868b; margin-bottom: 24px; font-size: 14px; }
+    .card {
+      background: #fff;
+      border-radius: 16px;
+      padding: 20px;
+      margin-bottom: 16px;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+    }
+    .card canvas {
+      border-radius: 8px;
+      flex-shrink: 0;
+    }
+    .card-info { flex: 1; }
+    .card-info strong { font-size: 17px; display: block; margin-bottom: 4px; }
+    .card-info span { font-size: 13px; color: #86868b; }
+    .btn {
+      display: inline-block;
+      padding: 10px 20px;
+      border: none;
+      border-radius: 10px;
+      font-size: 15px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .btn-primary { background: #0071e3; color: #fff; }
+    .btn-primary:hover { background: #0077ed; }
+    .btn-secondary { background: #e8e8ed; color: #1d1d1f; margin-right: 8px; }
+    .btn-secondary:hover { background: #dcdce0; }
+    .actions { margin-top: 24px; display: flex; gap: 12px; flex-wrap: wrap; }
+    .tip {
+      margin-top: 24px;
+      padding: 16px;
+      background: #fff3cd;
+      border-radius: 10px;
+      font-size: 13px;
+      color: #856404;
+    }
+  </style>
+</head>
+<body>
+
+  <h1>🎨 生成占位照片</h1>
+  <p class="subtitle">基于 data.js 中的人物数据，为每个人生成一张占位照片。</p>
+
+  <div id="previewArea"></div>
+
+  <div class="actions">
+    <button class="btn btn-secondary" onclick="generatePreview()">🔄 刷新预览</button>
+    <button class="btn btn-primary" onclick="downloadAll()">📥 一键下载全部</button>
+  </div>
+
+  <div class="tip">
+    💡 <strong>使用说明：</strong><br>
+    1. 点击「一键下载全部」下载所有占位照片<br>
+    2. 将下载的图片放到项目的 <code>photos/</code> 文件夹中<br>
+    3. 确保文件名和 <code>data.js</code> 中配置的 <code>photo</code> 路径一致<br>
+    4. 有了真实照片后，直接替换 <code>photos/</code> 里的文件即可
+  </div>
+
+  <script src="data.js"></script>
+  <script>
+    function generatePlaceholderCanvas(person) {
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+      const hue = (person.id * 137.5) % 360;
+      const bgColor = `hsl(${hue}, 45%, 18%)`;
+      const accentColor = `hsl(${hue}, 65%, 55%)`;
+      const textColor = `hsl(${hue}, 30%, 85%)`;
+
+      const w = 800, h = 1000;
+      canvas.width = w;
+      canvas.height = h;
+
+      // 背景
+      ctx.fillStyle = bgColor;
+      ctx.fillRect(0, 0, w, h);
+
+      // 装饰圆
+      ctx.fillStyle = `hsla(${hue}, 50%, 25%, 0.4)`;
+      ctx.beginPath();
+      ctx.arc(w * 0.5, h * 0.35, w * 0.35, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = `hsla(${hue}, 50%, 22%, 0.3)`;
+      ctx.beginPath();
+      ctx.arc(w * 0.5, h * 0.35, w * 0.25, 0, Math.PI * 2);
+      ctx.fill();
+
+      // 人物剪影
+      ctx.fillStyle = accentColor;
+      ctx.beginPath();
+      ctx.arc(w * 0.5, h * 0.28, w * 0.1, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.beginPath();
+      ctx.ellipse(w * 0.5, h * 0.55, w * 0.18, h * 0.18, 0, Math.PI, 0);
+      ctx.fill();
+
+      // 首字
+      ctx.fillStyle = textColor;
+      ctx.font = 'bold 72px -apple-system, "PingFang SC", sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(person.name.charAt(0), w * 0.5, h * 0.78);
+
+      // 装饰线
+      ctx.fillStyle = accentColor;
+      ctx.fillRect(w * 0.35, h * 0.88, w * 0.3, 4);
+      ctx.fillStyle = `hsla(${hue}, 65%, 55%, 0.4)`;
+      ctx.fillRect(w * 0.38, h * 0.90, w * 0.24, 2);
+
+      return canvas;
+    }
+
+    function generatePreview() {
+      const area = document.getElementById('previewArea');
+      area.innerHTML = '';
+
+      if (typeof PEOPLE_DATA === 'undefined') {
+        area.innerHTML = '<p style="color:red;">❌ 找不到 data.js，请确保文件存在</p>';
+        return;
+      }
+
+      PEOPLE_DATA.forEach(person => {
+        const canvas = generatePlaceholderCanvas(person);
+        // 缩略图显示
+        const displayCanvas = document.createElement('canvas');
+        displayCanvas.width = 120;
+        displayCanvas.height = 150;
+        const dctx = displayCanvas.getContext('2d');
+        dctx.drawImage(canvas, 0, 0, 120, 150);
+
+        const card = document.createElement('div');
+        card.className = 'card';
+
+        const wrap = document.createElement('div');
+        wrap.appendChild(displayCanvas);
+        card.appendChild(wrap);
+
+        const info = document.createElement('div');
+        info.className = 'card-info';
+        info.innerHTML = `<strong>${person.name}</strong><span>文件：${person.photo}</span>`;
+        card.appendChild(info);
+
+        // 单独下载按钮
+        const btn = document.createElement('button');
+        btn.className = 'btn btn-secondary';
+        btn.textContent = '下载';
+        btn.style.marginLeft = 'auto';
+        btn.onclick = () => downloadCanvas(canvas, person);
+        card.appendChild(btn);
+
+        area.appendChild(card);
+      });
+    }
+
+    function downloadCanvas(canvas, person) {
+      // 从 photo 路径提取文件名
+      const pathParts = person.photo.replace(/\\/g, '/').split('/');
+      const filename = pathParts[pathParts.length - 1] || `person${person.id}.jpg`;
+
+      canvas.toBlob(blob => {
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+      }, 'image/jpeg', 0.9);
+    }
+
+    function downloadAll() {
+      if (typeof PEOPLE_DATA === 'undefined') {
+        alert('找不到 data.js 数据文件！');
+        return;
+      }
+
+      PEOPLE_DATA.forEach((person, index) => {
+        setTimeout(() => {
+          const canvas = generatePlaceholderCanvas(person);
+          downloadCanvas(canvas, person);
+        }, index * 300); // 间隔下载，避免浏览器拦截
+      });
+
+      alert(`开始下载 ${PEOPLE_DATA.length} 张照片。\n\n如果被浏览器拦截了多个下载，请允许本站下载多个文件，然后点击「一键下载全部」重试。`);
+    }
+
+    // 初始预览
+    generatePreview();
+  </script>
+</body>
+</html>

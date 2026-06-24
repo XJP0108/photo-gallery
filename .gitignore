@@ -1,0 +1,6 @@
+# 不需要上传的文件
+*.ipynb
+INTERVIEW_PREP_REPORT.md
+falcon_finetune/
+jnt-cv-platform/
+jnt-logistics-ai/

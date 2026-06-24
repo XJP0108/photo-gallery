@@ -1,0 +1,412 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>二维码 - 照片画廊</title>
+  <style>
+    /* ========================================
+       全局基础
+       ======================================== */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text",
+        "PingFang SC", "Microsoft YaHei", Roboto, sans-serif;
+      background: #f5f5f7;
+      color: #1d1d1f;
+      line-height: 1.6;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    /* ========================================
+       顶部配置栏
+       ======================================== */
+    .config-bar {
+      background: #fff;
+      border-bottom: 1px solid #e5e5e5;
+      padding: 16px 20px;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+
+    .config-bar label {
+      display: block;
+      font-size: 12px;
+      font-weight: 600;
+      color: #86868b;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-bottom: 6px;
+    }
+
+    .config-bar input {
+      width: 100%;
+      padding: 10px 14px;
+      border: 1.5px solid #d2d2d7;
+      border-radius: 10px;
+      font-size: 15px;
+      font-family: "SF Mono", "Menlo", "Consolas", monospace;
+      background: #fafafa;
+      color: #1d1d1f;
+      transition: border-color 0.2s;
+    }
+
+    .config-bar input:focus {
+      outline: none;
+      border-color: #0071e3;
+      background: #fff;
+    }
+
+    .config-hint {
+      font-size: 12px;
+      color: #86868b;
+      margin-top: 6px;
+    }
+
+    /* ========================================
+       QR 码卡片网格
+       ======================================== */
+    .qr-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 24px;
+      padding: 24px;
+      max-width: 1100px;
+      margin: 0 auto;
+    }
+
+    .qr-card {
+      background: #fff;
+      border-radius: 20px;
+      padding: 32px 24px 24px;
+      text-align: center;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+      transition: transform 0.2s, box-shadow 0.2s;
+      break-inside: avoid;
+    }
+
+    .qr-card:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 30px rgba(0,0,0,0.1);
+    }
+
+    .qr-img-wrap {
+      display: inline-block;
+      padding: 12px;
+      background: #fff;
+      border: 2px solid #e5e5e5;
+      border-radius: 12px;
+      margin-bottom: 16px;
+      line-height: 0;
+    }
+
+    .qr-img-wrap img {
+      display: block;
+      width: 200px;
+      height: 200px;
+    }
+
+    /* 加载中占位 */
+    .qr-loading {
+      width: 200px;
+      height: 200px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #ccc;
+      font-size: 13px;
+    }
+
+    .qr-name {
+      font-size: 20px;
+      font-weight: 700;
+      margin-bottom: 4px;
+      color: #1d1d1f;
+    }
+
+    .qr-id {
+      font-size: 13px;
+      color: #86868b;
+      margin-bottom: 8px;
+    }
+
+    .qr-url {
+      font-size: 11px;
+      font-family: "SF Mono", "Menlo", "Consolas", monospace;
+      color: #0071e3;
+      word-break: break-all;
+      background: #f5f5f7;
+      padding: 6px 10px;
+      border-radius: 6px;
+      display: inline-block;
+      max-width: 100%;
+    }
+
+    .qr-download {
+      display: inline-block;
+      margin-top: 12px;
+      font-size: 13px;
+      color: #0071e3;
+      text-decoration: none;
+      padding: 6px 16px;
+      border: 1px solid #0071e3;
+      border-radius: 20px;
+      transition: all 0.2s;
+      cursor: pointer;
+    }
+
+    .qr-download:hover {
+      background: #0071e3;
+      color: #fff;
+    }
+
+    /* ========================================
+       错误状态
+       ======================================== */
+    .error-msg {
+      text-align: center;
+      padding: 60px 20px;
+      color: #86868b;
+    }
+
+    .error-msg .icon { font-size: 48px; margin-bottom: 16px; }
+
+    /* ========================================
+       打印样式
+       ======================================== */
+    @media print {
+      .config-bar { display: none !important; }
+
+      body { background: #fff; }
+
+      .qr-grid {
+        display: block;
+        padding: 0;
+        max-width: none;
+      }
+
+      .qr-card {
+        page-break-after: always;
+        box-shadow: none;
+        border-radius: 0;
+        padding: 40px 20px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        min-height: 100dvh;
+      }
+
+      .qr-card:last-child { page-break-after: avoid; }
+
+      .qr-img-wrap {
+        border: 3px solid #000;
+        padding: 16px;
+      }
+
+      .qr-img-wrap img {
+        width: 280px;
+        height: 280px;
+      }
+
+      .qr-name { font-size: 28px; margin-top: 16px; }
+      .qr-id { font-size: 16px; }
+      .qr-url { font-size: 12px; color: #333; }
+      .qr-download { display: none; }
+    }
+
+    /* ========================================
+       响应式
+       ======================================== */
+    @media (max-width: 640px) {
+      .qr-grid {
+        grid-template-columns: 1fr;
+        gap: 16px;
+        padding: 16px;
+      }
+      .qr-card { padding: 24px 16px 20px; }
+      .qr-img-wrap img {
+        width: 160px;
+        height: 160px;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- 配置栏 -->
+  <div class="config-bar">
+    <label>🔗 网页部署地址（生成二维码用）</label>
+    <input
+      type="text"
+      id="baseUrlInput"
+      placeholder="https://你的用户名.github.io/仓库名"
+      value=""
+    >
+    <div class="config-hint">
+      💡 部署到 GitHub Pages 后，把网址粘贴到这里，二维码会自动更新<br>
+      📱 如果还没部署，先用 <code>http://localhost:8080</code> 本地测试
+    </div>
+  </div>
+
+  <!-- 二维码网格 -->
+  <div class="qr-grid" id="qrGrid">
+    <!-- JS 动态生成 -->
+  </div>
+
+  <!-- ==================== 脚本 ==================== -->
+  <script src="data.js"></script>
+
+  <script>
+  (function() {
+    // =============================================
+    //  默认 Base URL — 自动检测本地还是线上
+    // =============================================
+    const isLocal = window.location.hostname === 'localhost'
+      || window.location.hostname === '127.0.0.1'
+      || window.location.protocol === 'file:';
+
+    const DEFAULT_BASE_URL = isLocal
+      ? `http://${window.location.host}`
+      : window.location.origin;
+
+    /**
+     * 使用 qrserver API 生成二维码图片
+     * 这是免费的二维码 API，无需任何外部 JS 库，全球可用
+     * 备选方案：如果这个 API 不可用，二维码会显示加载失败提示
+     */
+    function getQRImageURL(data, size) {
+      // qrserver API — 稳定免费，全球 CDN
+      const encoded = encodeURIComponent(data);
+      return `https://api.qrserver.com/v1/create-qr-code/?size=${size}x${size}&data=${encoded}&margin=10`;
+    }
+
+    // =============================================
+    //  生成单个人物的二维码卡片
+    // =============================================
+    function createQRCard(person, baseUrl) {
+      const url = `${baseUrl}?person=${person.id}`;
+
+      const card = document.createElement('div');
+      card.className = 'qr-card';
+
+      // 二维码图片区域
+      const imgWrap = document.createElement('div');
+      imgWrap.className = 'qr-img-wrap';
+
+      const img = document.createElement('img');
+      img.alt = `${person.name} 的二维码`;
+      img.src = getQRImageURL(url, 200);
+      img.loading = 'lazy';
+
+      // 图片加载失败时的处理
+      img.onerror = function() {
+        imgWrap.innerHTML =
+          '<div class="qr-loading" style="flex-direction:column;gap:8px;">' +
+          '<span style="font-size:32px;">📵</span>' +
+          '<span style="font-size:12px;">二维码加载失败</span>' +
+          '<span style="font-size:11px;color:#ccc;">请检查网络后刷新</span>' +
+          '</div>';
+      };
+
+      imgWrap.appendChild(img);
+      card.appendChild(imgWrap);
+
+      // 姓名
+      const nameEl = document.createElement('div');
+      nameEl.className = 'qr-name';
+      nameEl.textContent = person.name;
+      card.appendChild(nameEl);
+
+      // ID
+      const idEl = document.createElement('div');
+      idEl.className = 'qr-id';
+      idEl.textContent = `编号：${person.id}`;
+      card.appendChild(idEl);
+
+      // URL 展示
+      const urlEl = document.createElement('div');
+      urlEl.className = 'qr-url';
+      urlEl.textContent = url;
+      card.appendChild(urlEl);
+
+      // 下载按钮（直接下载二维码图片）
+      const downloadBtn = document.createElement('a');
+      downloadBtn.className = 'qr-download';
+      downloadBtn.textContent = '⬇ 下载二维码';
+      downloadBtn.href = getQRImageURL(url, 500);
+      downloadBtn.download = `qrcode-${person.id}-${person.name}.png`;
+      downloadBtn.target = '_blank';
+      card.appendChild(downloadBtn);
+
+      return card;
+    }
+
+    // =============================================
+    //  渲染所有二维码
+    // =============================================
+    function renderQRCodes(data, baseUrl) {
+      const grid = document.getElementById('qrGrid');
+      grid.innerHTML = '';
+
+      data.forEach(person => {
+        const card = createQRCard(person, baseUrl);
+        grid.appendChild(card);
+      });
+    }
+
+    // =============================================
+    //  主流程
+    // =============================================
+    function init() {
+      const baseUrlInput = document.getElementById('baseUrlInput');
+      const grid = document.getElementById('qrGrid');
+
+      // 检查数据
+      if (typeof PEOPLE_DATA === 'undefined') {
+        grid.innerHTML = `
+          <div class="error-msg">
+            <div class="icon">⚠️</div>
+            <p>找不到 data.js 数据文件</p>
+            <p style="margin-top:8px;font-size:13px;">请确保 data.js 与本页面在同一目录</p>
+          </div>`;
+        return;
+      }
+
+      // 恢复上次保存的 URL，否则用默认值
+      const savedUrl = localStorage.getItem('gallery_base_url');
+      if (savedUrl) {
+        baseUrlInput.value = savedUrl;
+      } else {
+        baseUrlInput.value = DEFAULT_BASE_URL;
+      }
+
+      // 初始渲染
+      const currentUrl = baseUrlInput.value.trim() || DEFAULT_BASE_URL;
+      renderQRCodes(PEOPLE_DATA, currentUrl);
+
+      // 输入变化时重新生成（防抖）
+      let debounceTimer;
+      baseUrlInput.addEventListener('input', function() {
+        clearTimeout(debounceTimer);
+        const url = this.value.trim();
+        debounceTimer = setTimeout(() => {
+          localStorage.setItem('gallery_base_url', url);
+          renderQRCodes(PEOPLE_DATA, url || DEFAULT_BASE_URL);
+        }, 500);
+      });
+    }
+
+    // DOM Ready
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', init);
+    } else {
+      init();
+    }
+  })();
+  </script>
+
+</body>
+</html>

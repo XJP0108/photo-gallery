@@ -1,0 +1,573 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <!-- 移动端适配：Android + iOS 通用 -->
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover, shrink-to-fit=no">
+  <!-- iOS Safari 全屏模式 -->
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <!-- Android Chrome 主题色 -->
+  <meta name="theme-color" content="#1a1a2e">
+  <title>照片画廊</title>
+  <style>
+    /* ========================================
+       全局重置 & 移动端基础
+       ======================================== */
+    *, *::before, *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    html {
+      /* iOS 惯性滚动 */
+      -webkit-overflow-scrolling: touch;
+      /* 禁止 iOS 橡皮筋效果导致的整页弹动（可选） */
+      overflow-x: hidden;
+      /* 动态视口高度（iOS Safari 地址栏收起/展开自适应） */
+      height: 100dvh;
+    }
+
+    body {
+      /* 系统字体栈：iOS 用 SF，Android 用 Roboto，中文回退 */
+      font-family:
+        -apple-system, BlinkMacSystemFont,
+        "SF Pro Text", "SF Pro Display",
+        "PingFang SC", "Hiragino Sans GB",
+        "Microsoft YaHei", "WenQuanYi Micro Hei",
+        Roboto, "Noto Sans SC",
+        sans-serif;
+      background-color: #0f0f1a;
+      color: #e8e8ec;
+      line-height: 1.6;
+      min-height: 100dvh;
+      /* iOS 安全区域底部适配 */
+      padding-bottom: env(safe-area-inset-bottom, 0px);
+      /* 禁止移动端长按菜单（如需保留文本选择可去掉） */
+      -webkit-tap-highlight-color: transparent;
+      -webkit-user-select: none;
+      user-select: none;
+    }
+
+    /* ========================================
+       顶部导航栏
+       ======================================== */
+    .header {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      background: rgba(15, 15, 26, 0.85);
+      /* iOS 毛玻璃效果 */
+      -webkit-backdrop-filter: saturate(180%) blur(20px);
+      backdrop-filter: saturate(180%) blur(20px);
+      padding: 12px 20px;
+      /* iOS 顶部安全区域 */
+      padding-top: calc(12px + env(safe-area-inset-top, 0px));
+      text-align: center;
+      border-bottom: 0.5px solid rgba(255,255,255,0.08);
+    }
+
+    .header-title {
+      font-size: 17px;
+      font-weight: 600;
+      letter-spacing: 0.5px;
+      color: #ffffff;
+    }
+
+    .header-subtitle {
+      font-size: 12px;
+      color: rgba(255,255,255,0.45);
+      margin-top: 2px;
+    }
+
+    .header-badge {
+      display: inline-block;
+      background: #ff6b6b;
+      color: #fff;
+      font-size: 11px;
+      font-weight: 600;
+      padding: 2px 10px;
+      border-radius: 10px;
+      margin-left: 6px;
+      animation: badgePulse 2s ease-in-out;
+    }
+
+    @keyframes badgePulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.5; }
+    }
+
+    /* ========================================
+       主画廊容器
+       ======================================== */
+    .gallery {
+      /* PC 端居中限宽，移动端撑满 */
+      max-width: 600px;
+      margin: 0 auto;
+      padding: 8px 0;
+      /* 底部留白：给最后一张卡片 + 安全区域 */
+      padding-bottom: calc(40px + env(safe-area-inset-bottom, 0px));
+    }
+
+    /* ========================================
+       人物卡片
+       ======================================== */
+    .card {
+      margin: 0 auto 24px;
+      width: calc(100% - 24px);
+      max-width: 600px;
+      background: #1a1a2e;
+      border-radius: 16px;
+      overflow: hidden;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+      transition: transform 0.3s ease, box-shadow 0.3s ease;
+    }
+
+    .card:active {
+      transform: scale(0.98);
+    }
+
+    /* 目标人物高亮 */
+    .card.highlight {
+      animation: cardHighlight 1.2s ease-in-out 3;
+      box-shadow: 0 0 0 3px #ff6b6b, 0 8px 40px rgba(255, 107, 107, 0.35);
+    }
+
+    @keyframes cardHighlight {
+      0%, 100% {
+        box-shadow: 0 0 0 3px #ff6b6b, 0 8px 40px rgba(255, 107, 107, 0.35);
+      }
+      50% {
+        box-shadow: 0 0 0 6px rgba(255, 107, 107, 0.5), 0 12px 50px rgba(255, 107, 107, 0.55);
+      }
+    }
+
+    /* ========================================
+       照片区域
+       ======================================== */
+    .card-photo-wrap {
+      position: relative;
+      width: 100%;
+      /* 4:5 比例，接近小红书图片比例 */
+      aspect-ratio: 4 / 5;
+      background: #16213e;
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    /* Canvas 占位图（默认显示，在底层） */
+    .card-photo-placeholder {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+
+    /* 真实照片（绝对定位覆盖在占位图上方，加载成功后淡入） */
+    .card-photo {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      opacity: 0;
+      transition: opacity 0.4s ease;
+      background: #16213e;
+    }
+
+    .card-photo.loaded {
+      opacity: 1;
+    }
+
+    /* 扫到的人物标签 */
+    .card-scanned-tag {
+      position: absolute;
+      top: 12px;
+      right: 12px;
+      background: #ff6b6b;
+      color: #fff;
+      font-size: 12px;
+      font-weight: 700;
+      padding: 4px 12px;
+      border-radius: 12px;
+      letter-spacing: 0.5px;
+      opacity: 0;
+      transform: translateY(-8px);
+      transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    }
+
+    .card.scanned .card-scanned-tag {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    /* ========================================
+       卡片信息区
+       ======================================== */
+    .card-info {
+      padding: 16px;
+    }
+
+    .card-name {
+      font-size: 20px;
+      font-weight: 700;
+      color: #fff;
+      margin-bottom: 4px;
+    }
+
+    .card-desc {
+      font-size: 14px;
+      color: rgba(255,255,255,0.55);
+      margin-bottom: 10px;
+      min-height: 20px; /* 无简介也占位保持统一 */
+    }
+
+    .card-desc:empty::after {
+      content: "这个人很懒，什么都没写";
+      color: rgba(255,255,255,0.2);
+      font-style: italic;
+    }
+
+    .card-tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .card-tag {
+      font-size: 12px;
+      padding: 3px 10px;
+      border-radius: 20px;
+      background: rgba(255,255,255,0.08);
+      color: rgba(255,255,255,0.6);
+      letter-spacing: 0.3px;
+    }
+
+    .card-tag:empty {
+      display: none;
+    }
+
+    /* ========================================
+       底部滚动提示
+       ======================================== */
+    .scroll-hint {
+      text-align: center;
+      padding: 20px;
+      color: rgba(255,255,255,0.2);
+      font-size: 13px;
+      letter-spacing: 1px;
+    }
+
+    .scroll-hint::after {
+      content: "";
+      display: block;
+      width: 1px;
+      height: 30px;
+      background: rgba(255,255,255,0.1);
+      margin: 10px auto 0;
+    }
+
+    /* ========================================
+       PC 端微调
+       ======================================== */
+    @media (min-width: 640px) {
+      .gallery {
+        padding: 16px 0;
+        padding-bottom: 40px;
+      }
+      .card {
+        border-radius: 20px;
+      }
+      .header {
+        padding: 16px 24px;
+      }
+    }
+
+    /* ========================================
+       暗色模式自动跟随系统（可选）
+       ======================================== */
+    @media (prefers-color-scheme: light) {
+      /* 如果用户系统是浅色模式，保持深色主题（画廊风格） */
+      /* 不做切换，始终深色 */
+    }
+  </style>
+</head>
+<body>
+
+  <!-- 顶部导航 -->
+  <header class="header">
+    <div class="header-title" id="headerTitle">📷 照片画廊</div>
+    <div class="header-subtitle" id="headerSubtitle"></div>
+  </header>
+
+  <!-- 照片流 -->
+  <main class="gallery" id="gallery">
+    <!-- JS 动态渲染 -->
+  </main>
+
+  <!-- 底部提示 -->
+  <div class="scroll-hint">继续滑动探索更多</div>
+
+  <!-- ==================== 脚本 ==================== -->
+  <!-- 加载人物数据 -->
+  <script src="data.js"></script>
+
+  <script>
+  (function() {
+    // =============================================
+    //  1. 读取 URL 参数
+    // =============================================
+    function getPersonIdFromURL() {
+      const params = new URLSearchParams(window.location.search);
+      const id = parseInt(params.get('person'), 10);
+      return isNaN(id) ? null : id;
+    }
+
+    // =============================================
+    //  2. 检测是否为移动端
+    // =============================================
+    function isMobile() {
+      return /Android|iPhone|iPad|iPod|webOS/i.test(navigator.userAgent)
+        || (window.innerWidth < 768);
+    }
+
+    // =============================================
+    //  3. Canvas 生成占位图（照片缺失时用）
+    // =============================================
+    function generatePlaceholder(person) {
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+
+      // 根据 id 生成不同的色调
+      const hue = (person.id * 137.5) % 360; // 黄金角度分布
+      const bgColor = `hsl(${hue}, 45%, 18%)`;
+      const accentColor = `hsl(${hue}, 65%, 55%)`;
+      const textColor = `hsl(${hue}, 30%, 85%)`;
+
+      // Canvas 尺寸（按 4:5 比例）
+      const w = 800;
+      const h = 1000;
+      canvas.width = w;
+      canvas.height = h;
+
+      // 背景
+      ctx.fillStyle = bgColor;
+      ctx.fillRect(0, 0, w, h);
+
+      // 装饰圆
+      ctx.fillStyle = `hsla(${hue}, 50%, 25%, 0.4)`;
+      ctx.beginPath();
+      ctx.arc(w * 0.5, h * 0.35, w * 0.35, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.fillStyle = `hsla(${hue}, 50%, 22%, 0.3)`;
+      ctx.beginPath();
+      ctx.arc(w * 0.5, h * 0.35, w * 0.25, 0, Math.PI * 2);
+      ctx.fill();
+
+      // 人物轮廓简笔画
+      ctx.fillStyle = accentColor;
+      // 头
+      ctx.beginPath();
+      ctx.arc(w * 0.5, h * 0.28, w * 0.1, 0, Math.PI * 2);
+      ctx.fill();
+      // 身体
+      ctx.beginPath();
+      ctx.ellipse(w * 0.5, h * 0.55, w * 0.18, h * 0.18, 0, Math.PI, 0);
+      ctx.fill();
+
+      // 名字首字
+      const firstName = person.name.charAt(0);
+      ctx.fillStyle = textColor;
+      ctx.font = 'bold 72px -apple-system, "PingFang SC", sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(firstName, w * 0.5, h * 0.78);
+
+      // 底部装饰线
+      ctx.fillStyle = accentColor;
+      ctx.fillRect(w * 0.35, h * 0.88, w * 0.3, 4);
+      ctx.fillStyle = `hsla(${hue}, 65%, 55%, 0.4)`;
+      ctx.fillRect(w * 0.38, h * 0.90, w * 0.24, 2);
+
+      return canvas;
+    }
+
+    // =============================================
+    //  4. 渲染所有人物卡片
+    // =============================================
+    function renderGallery(data, targetId) {
+      const gallery = document.getElementById('gallery');
+      gallery.innerHTML = '';
+
+      // 更新头部信息
+      document.getElementById('headerSubtitle').textContent =
+        `共 ${data.length} 人`;
+
+      // 找到扫中的人
+      const scannedPerson = data.find(p => p.id === targetId);
+      if (scannedPerson) {
+        document.getElementById('headerTitle').innerHTML =
+          `📷 照片画廊 <span class="header-badge">扫到了${scannedPerson.name}</span>`;
+      }
+
+      data.forEach((person, index) => {
+        const card = document.createElement('div');
+        card.className = 'card';
+        card.id = `person-${person.id}`;
+        // 标记目标卡片
+        if (person.id === targetId) {
+          card.classList.add('scanned');
+        }
+
+        // 照片区域
+        const photoWrap = document.createElement('div');
+        photoWrap.className = 'card-photo-wrap';
+
+        // 先用 Canvas 占位图
+        const placeholder = generatePlaceholder(person);
+        placeholder.className = 'card-photo-placeholder';
+        photoWrap.appendChild(placeholder);
+
+        // 尝试加载真实照片
+        const img = new Image();
+        img.className = 'card-photo';
+        img.alt = person.name;
+        img.loading = 'lazy'; // 原生懒加载
+        img.decoding = 'async';
+
+        img.onload = function() {
+          // 照片加载成功：占位图保持（作为背景），照片淡入覆盖
+          img.classList.add('loaded');
+        };
+
+        img.onerror = function() {
+          // 照片加载失败，移除 img，保留 Canvas 占位图
+          img.remove();
+        };
+
+        // 设置 src 触发加载
+        img.src = person.photo;
+        photoWrap.appendChild(img);
+
+        // "扫到你了" 标签
+        const scannedTag = document.createElement('div');
+        scannedTag.className = 'card-scanned-tag';
+        scannedTag.textContent = '📍 扫到我了';
+        photoWrap.appendChild(scannedTag);
+
+        card.appendChild(photoWrap);
+
+        // 信息区
+        const info = document.createElement('div');
+        info.className = 'card-info';
+
+        const nameEl = document.createElement('div');
+        nameEl.className = 'card-name';
+        nameEl.textContent = person.name;
+        info.appendChild(nameEl);
+
+        const descEl = document.createElement('div');
+        descEl.className = 'card-desc';
+        descEl.textContent = person.description || '';
+        info.appendChild(descEl);
+
+        // 标签
+        const tagsEl = document.createElement('div');
+        tagsEl.className = 'card-tags';
+        if (person.tags && person.tags.length > 0) {
+          person.tags.forEach(tag => {
+            const tagEl = document.createElement('span');
+            tagEl.className = 'card-tag';
+            tagEl.textContent = tag;
+            tagsEl.appendChild(tagEl);
+          });
+        }
+        info.appendChild(tagsEl);
+
+        card.appendChild(info);
+        gallery.appendChild(card);
+      });
+    }
+
+    // =============================================
+    //  5. 滚动到目标人物 + 高亮动画
+    // =============================================
+    function scrollToPerson(targetId) {
+      if (!targetId) return;
+
+      const targetCard = document.getElementById(`person-${targetId}`);
+      if (!targetCard) return;
+
+      // 稍微延迟确保 DOM 渲染完成
+      setTimeout(() => {
+        // 平滑滚动，目标居中
+        targetCard.scrollIntoView({
+          behavior: 'smooth',
+          block: 'center',
+          inline: 'nearest'
+        });
+
+        // 滚动结束后触发高亮
+        setTimeout(() => {
+          targetCard.classList.add('highlight');
+
+          // 3 轮动画后移除（1.2s * 3 = 3.6s）
+          setTimeout(() => {
+            targetCard.classList.remove('highlight');
+          }, 3800);
+        }, 600);
+      }, 300);
+    }
+
+    // =============================================
+    //  6. 主流程
+    // =============================================
+    function init() {
+      // 检查数据是否存在
+      if (typeof PEOPLE_DATA === 'undefined') {
+        document.getElementById('gallery').innerHTML =
+          '<div style="text-align:center;padding:60px 20px;color:rgba(255,255,255,0.5);">⚠️ 找不到 data.js 数据文件</div>';
+        return;
+      }
+
+      const data = PEOPLE_DATA;
+      const targetId = getPersonIdFromURL();
+
+      // 渲染所有卡片
+      renderGallery(data, targetId);
+
+      // 如果有目标人物，滚动过去
+      if (targetId) {
+        scrollToPerson(targetId);
+      }
+    }
+
+    // =============================================
+    //  7. iOS/Android 兼容处理
+    // =============================================
+    // 修复 iOS Safari 100dvh 问题（地址栏收起/展开）
+    function setViewportHeight() {
+      const vh = window.innerHeight * 0.01;
+      document.documentElement.style.setProperty('--vh', `${vh}px`);
+    }
+    setViewportHeight();
+    window.addEventListener('resize', setViewportHeight);
+    window.addEventListener('orientationchange', () => {
+      setTimeout(setViewportHeight, 100);
+    });
+
+    // DOM Ready 后启动
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', init);
+    } else {
+      init();
+    }
+  })();
+  </script>
+
+</body>
+</html>
