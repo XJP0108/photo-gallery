@@ -9,6 +9,10 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <!-- Android Chrome 主题色 -->
   <meta name="theme-color" content="#1a1a2e">
+  <!-- 禁止浏览器缓存，确保每次扫码都拉取最新版本 -->
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <meta http-equiv="Pragma" content="no-cache">
+  <meta http-equiv="Expires" content="0">
   <title>照片画廊</title>
   <style>
     /* ========================================
@@ -312,10 +316,16 @@
   <div class="scroll-hint">继续滑动探索更多</div>
 
   <!-- ==================== 脚本 ==================== -->
-  <!-- 加载人物数据 -->
-  <script src="data.js?v=3"></script>
-
   <script>
+  // =============================================
+  // ⭐ 人物数据配置 — 改这里就行！
+  // =============================================
+  const PEOPLE_DATA = [
+    {id:1, name:"小明", photo:"", description:"喜欢摄影和旅行", tags:["摄影","旅行","咖啡"]},
+    {id:2, name:"小红", photo:"", description:"热爱画画的设计师", tags:["设计","绘画","音乐"]},
+    {id:3, name:"小刚", photo:"", description:"程序员 & 健身达人", tags:["编程","健身","阅读"]}
+  ];
+
   (function() {
     // =============================================
     //  1. 读取 URL 参数
