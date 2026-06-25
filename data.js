@@ -20,7 +20,7 @@ const PEOPLE_DATA = [
   {
     id: 1,
     name: "小明",
-    photo: "photos/person1.jpg",
+    photo: "photos/xiaoming.jpg",
     description: "喜欢摄影和旅行",
     tags: ["摄影", "旅行", "咖啡"]
   },
