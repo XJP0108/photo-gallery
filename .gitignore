@@ -1,6 +1,22 @@
-# 不需要上传的文件
+# ============================================
+# 照片画廊项目 — 仅保留画廊相关文件
+# ============================================
+
+# 旧版本 & 存档
+gallery.html
+photo-gallery/
+交付包/
+
+# 压缩包
+*.tar
+*.zip
+
+# 其他项目（ML / CV / 面试等）
 *.ipynb
 INTERVIEW_PREP_REPORT.md
 falcon_finetune/
 jnt-cv-platform/
 jnt-logistics-ai/
+
+# 杂项文档
+师妹指导手册-遥感与GEE入门.md

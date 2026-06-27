@@ -9,8 +9,8 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <!-- Android Chrome 主题色 -->
   <meta name="theme-color" content="#1a1a2e">
-  <!-- 禁止浏览器缓存，确保每次扫码都拉取最新版本 -->
-  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <!-- ⚡ 禁止浏览器缓存 — 确保每次扫码都拉取最新版本 -->
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate, max-age=0">
   <meta http-equiv="Pragma" content="no-cache">
   <meta http-equiv="Expires" content="0">
   <title>照片画廊</title>
@@ -25,16 +25,12 @@
     }
 
     html {
-      /* iOS 惯性滚动 */
       -webkit-overflow-scrolling: touch;
-      /* 禁止 iOS 橡皮筋效果导致的整页弹动（可选） */
       overflow-x: hidden;
-      /* 动态视口高度（iOS Safari 地址栏收起/展开自适应） */
       height: 100dvh;
     }
 
     body {
-      /* 系统字体栈：iOS 用 SF，Android 用 Roboto，中文回退 */
       font-family:
         -apple-system, BlinkMacSystemFont,
         "SF Pro Text", "SF Pro Display",
@@ -46,12 +42,93 @@
       color: #e8e8ec;
       line-height: 1.6;
       min-height: 100dvh;
-      /* iOS 安全区域底部适配 */
       padding-bottom: env(safe-area-inset-bottom, 0px);
-      /* 禁止移动端长按菜单（如需保留文本选择可去掉） */
       -webkit-tap-highlight-color: transparent;
       -webkit-user-select: none;
       user-select: none;
+    }
+
+    /* ========================================
+       加载遮罩
+       ======================================== */
+    .loading-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 9999;
+      background: #0f0f1a;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      transition: opacity 0.4s ease;
+    }
+
+    .loading-overlay.hidden {
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    .loading-spinner {
+      width: 40px;
+      height: 40px;
+      border: 3px solid rgba(255,255,255,0.1);
+      border-top-color: #ff6b6b;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    .loading-text {
+      color: rgba(255,255,255,0.5);
+      font-size: 14px;
+      margin-top: 16px;
+      letter-spacing: 0.5px;
+    }
+
+    .loading-retry {
+      display: none;
+      margin-top: 20px;
+      padding: 10px 28px;
+      background: #ff6b6b;
+      color: #fff;
+      border: none;
+      border-radius: 20px;
+      font-size: 15px;
+      font-weight: 600;
+      cursor: pointer;
+      letter-spacing: 0.5px;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    .loading-retry:active {
+      opacity: 0.8;
+    }
+
+    .loading-hint {
+      display: none;
+      color: rgba(255,255,255,0.3);
+      font-size: 12px;
+      margin-top: 12px;
+      text-align: center;
+      line-height: 1.8;
+    }
+
+    /* 超时状态 */
+    .loading-overlay.timeout .loading-spinner {
+      display: none;
+    }
+    .loading-overlay.timeout .loading-text {
+      font-size: 16px;
+      color: rgba(255,255,255,0.7);
+    }
+    .loading-overlay.timeout .loading-retry {
+      display: block;
+    }
+    .loading-overlay.timeout .loading-hint {
+      display: block;
     }
 
     /* ========================================
@@ -62,11 +139,9 @@
       top: 0;
       z-index: 100;
       background: rgba(15, 15, 26, 0.85);
-      /* iOS 毛玻璃效果 */
       -webkit-backdrop-filter: saturate(180%) blur(20px);
       backdrop-filter: saturate(180%) blur(20px);
       padding: 12px 20px;
-      /* iOS 顶部安全区域 */
       padding-top: calc(12px + env(safe-area-inset-top, 0px));
       text-align: center;
       border-bottom: 0.5px solid rgba(255,255,255,0.08);
@@ -106,11 +181,9 @@
        主画廊容器
        ======================================== */
     .gallery {
-      /* PC 端居中限宽，移动端撑满 */
       max-width: 600px;
       margin: 0 auto;
       padding: 8px 0;
-      /* 底部留白：给最后一张卡片 + 安全区域 */
       padding-bottom: calc(40px + env(safe-area-inset-bottom, 0px));
     }
 
@@ -132,7 +205,6 @@
       transform: scale(0.98);
     }
 
-    /* 目标人物高亮 */
     .card.highlight {
       animation: cardHighlight 1.2s ease-in-out 3;
       box-shadow: 0 0 0 3px #ff6b6b, 0 8px 40px rgba(255, 107, 107, 0.35);
@@ -153,7 +225,6 @@
     .card-photo-wrap {
       position: relative;
       width: 100%;
-      /* 4:5 比例，接近小红书图片比例 */
       aspect-ratio: 4 / 5;
       background: #16213e;
       overflow: hidden;
@@ -162,14 +233,12 @@
       justify-content: center;
     }
 
-    /* Canvas 占位图（默认显示，在底层） */
     .card-photo-placeholder {
       width: 100%;
       height: 100%;
       display: block;
     }
 
-    /* 真实照片（绝对定位覆盖在占位图上方，加载成功后淡入） */
     .card-photo {
       position: absolute;
       top: 0;
@@ -226,7 +295,7 @@
       font-size: 14px;
       color: rgba(255,255,255,0.55);
       margin-bottom: 10px;
-      min-height: 20px; /* 无简介也占位保持统一 */
+      min-height: 20px;
     }
 
     .card-desc:empty::after {
@@ -275,6 +344,37 @@
     }
 
     /* ========================================
+       刷新提示条
+       ======================================== */
+    .refresh-bar {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      z-index: 200;
+      background: #ff6b6b;
+      color: #fff;
+      text-align: center;
+      padding: 10px 16px;
+      font-size: 13px;
+      font-weight: 600;
+      letter-spacing: 0.5px;
+      transform: translateY(100%);
+      transition: transform 0.35s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+      padding-bottom: calc(10px + env(safe-area-inset-bottom, 0px));
+      cursor: pointer;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    .refresh-bar.show {
+      transform: translateY(0);
+    }
+
+    .refresh-bar:active {
+      opacity: 0.9;
+    }
+
+    /* ========================================
        PC 端微调
        ======================================== */
     @media (min-width: 640px) {
@@ -289,77 +389,157 @@
         padding: 16px 24px;
       }
     }
-
-    /* ========================================
-       暗色模式自动跟随系统（可选）
-       ======================================== */
-    @media (prefers-color-scheme: light) {
-      /* 如果用户系统是浅色模式，保持深色主题（画廊风格） */
-      /* 不做切换，始终深色 */
-    }
   </style>
 </head>
 <body>
 
-  <!-- 顶部导航 -->
+  <!-- ==================== 加载遮罩 ==================== -->
+  <div class="loading-overlay" id="loadingOverlay">
+    <div class="loading-spinner"></div>
+    <div class="loading-text" id="loadingText">正在加载…</div>
+    <button class="loading-retry" id="loadingRetry" onclick="location.reload(true)">🔄 点此刷新重试</button>
+    <div class="loading-hint">
+      如持续加载失败<br>请尝试用系统浏览器打开链接<br>或检查网络后下拉刷新
+    </div>
+  </div>
+
+  <!-- ==================== 页面内容 ==================== -->
   <header class="header">
     <div class="header-title" id="headerTitle">📷 照片画廊</div>
     <div class="header-subtitle" id="headerSubtitle"></div>
   </header>
 
-  <!-- 照片流 -->
   <main class="gallery" id="gallery">
     <!-- JS 动态渲染 -->
   </main>
 
-  <!-- 底部提示 -->
   <div class="scroll-hint">继续滑动探索更多</div>
+
+  <!-- 刷新提示条（内容更新提示） -->
+  <div class="refresh-bar" id="refreshBar" onclick="location.reload(true)">
+    🔄 内容已更新，点此刷新查看最新
+  </div>
 
   <!-- ==================== 脚本 ==================== -->
   <script>
-  // =============================================
-  // ⭐ 人物数据配置 — 改这里就行！
-  // =============================================
-  const PEOPLE_DATA = [
-    {id:1, name:"小明", photo:"", description:"喜欢摄影和旅行", tags:["摄影","旅行","咖啡"]},
-    {id:2, name:"小红", photo:"", description:"热爱画画的设计师", tags:["设计","绘画","音乐"]},
-    {id:3, name:"小刚", photo:"", description:"程序员 & 健身达人", tags:["编程","健身","阅读"]}
-  ];
+  // ⚡ 构建版本号 — 每次更新 data.js 后 +1
+  //    这个数字确保所有浏览器忽略缓存，加载最新数据
+  window.__BUILD__ = 7;
+  </script>
 
+  <script>
   (function() {
     // =============================================
-    //  1. 读取 URL 参数
+    //  0. 加载状态管理
     // =============================================
-    function getPersonIdFromURL() {
-      const params = new URLSearchParams(window.location.search);
-      const id = parseInt(params.get('person'), 10);
-      return isNaN(id) ? null : id;
+    var TIMEOUT_MS = 8000;       // 8 秒超时
+    var RETRY_COUNT = 0;
+    var MAX_RETRY = 2;
+
+    var overlay = document.getElementById('loadingOverlay');
+    var loadingText = document.getElementById('loadingText');
+    var timeoutTimer = null;
+
+    function showLoading(msg) {
+      overlay.classList.remove('hidden', 'timeout');
+      loadingText.textContent = msg || '正在加载…';
+    }
+
+    function hideLoading() {
+      if (timeoutTimer) clearTimeout(timeoutTimer);
+      overlay.classList.add('hidden');
+    }
+
+    function showTimeout() {
+      overlay.classList.add('timeout');
+      loadingText.textContent = '⚠️ 网络较慢，请稍候';
     }
 
     // =============================================
-    //  2. 检测是否为移动端
+    //  1. 动态加载 data.js（带版本号，强制破缓存）
     // =============================================
-    function isMobile() {
-      return /Android|iPhone|iPad|iPod|webOS/i.test(navigator.userAgent)
-        || (window.innerWidth < 768);
+    function loadDataScript(callback) {
+      var build = window.__BUILD__ || Date.now();
+      var script = document.createElement('script');
+      script.src = 'data.js?v=' + build;
+      script.async = true;
+
+      script.onload = function() {
+        if (timeoutTimer) clearTimeout(timeoutTimer);
+
+        // 版本校验：data.js 里的版本号必须和 index.html 一致
+        if (window.__DATA_VERSION__ && window.__DATA_VERSION__ !== window.__BUILD__) {
+          // 版本不一致 → 浏览器缓存了旧的 data.js → 强制刷新
+          console.warn('[画廊] 版本不匹配: data=' + window.__DATA_VERSION__ + ' html=' + window.__BUILD__ + ' → 强制刷新');
+          location.reload(true);
+          return;
+        }
+
+        if (typeof PEOPLE_DATA === 'undefined') {
+          showLoadError('数据加载失败');
+          return;
+        }
+
+        callback();
+      };
+
+      script.onerror = function() {
+        if (timeoutTimer) clearTimeout(timeoutTimer);
+
+        RETRY_COUNT++;
+        if (RETRY_COUNT <= MAX_RETRY) {
+          // 自动重试
+          showLoading('正在重试 (' + RETRY_COUNT + '/' + MAX_RETRY + ')…');
+          var retryScript = document.createElement('script');
+          // 重试时加随机参数，绕过任何中间缓存
+          retryScript.src = 'data.js?v=' + build + '&r=' + Date.now();
+          retryScript.async = true;
+          retryScript.onload = script.onload;
+          retryScript.onerror = script.onerror;
+          document.head.appendChild(retryScript);
+        } else {
+          showTimeout();
+        }
+      };
+
+      // 启动超时计时器
+      timeoutTimer = setTimeout(function() {
+        if (typeof PEOPLE_DATA === 'undefined') {
+          showTimeout();
+        }
+      }, TIMEOUT_MS);
+
+      document.head.appendChild(script);
+    }
+
+    function showLoadError(msg) {
+      overlay.classList.add('timeout');
+      loadingText.textContent = '⚠️ ' + msg;
+    }
+
+    // =============================================
+    //  2. 读取 URL 参数
+    // =============================================
+    function getPersonIdFromURL() {
+      var params = new URLSearchParams(window.location.search);
+      var id = parseInt(params.get('person'), 10);
+      return isNaN(id) ? null : id;
     }
 
     // =============================================
     //  3. Canvas 生成占位图（照片缺失时用）
     // =============================================
     function generatePlaceholder(person) {
-      const canvas = document.createElement('canvas');
-      const ctx = canvas.getContext('2d');
+      var canvas = document.createElement('canvas');
+      var ctx = canvas.getContext('2d');
 
-      // 根据 id 生成不同的色调
-      const hue = (person.id * 137.5) % 360; // 黄金角度分布
-      const bgColor = `hsl(${hue}, 45%, 18%)`;
-      const accentColor = `hsl(${hue}, 65%, 55%)`;
-      const textColor = `hsl(${hue}, 30%, 85%)`;
+      var hue = (person.id * 137.5) % 360;
+      var bgColor = 'hsl(' + hue + ',45%,18%)';
+      var accentColor = 'hsl(' + hue + ',65%,55%)';
+      var textColor = 'hsl(' + hue + ',30%,85%)';
 
-      // Canvas 尺寸（按 4:5 比例）
-      const w = 800;
-      const h = 1000;
+      var w = 800;
+      var h = 1000;
       canvas.width = w;
       canvas.height = h;
 
@@ -368,29 +548,27 @@
       ctx.fillRect(0, 0, w, h);
 
       // 装饰圆
-      ctx.fillStyle = `hsla(${hue}, 50%, 25%, 0.4)`;
+      ctx.fillStyle = 'hsla(' + hue + ',50%,25%,0.4)';
       ctx.beginPath();
       ctx.arc(w * 0.5, h * 0.35, w * 0.35, 0, Math.PI * 2);
       ctx.fill();
 
-      ctx.fillStyle = `hsla(${hue}, 50%, 22%, 0.3)`;
+      ctx.fillStyle = 'hsla(' + hue + ',50%,22%,0.3)';
       ctx.beginPath();
       ctx.arc(w * 0.5, h * 0.35, w * 0.25, 0, Math.PI * 2);
       ctx.fill();
 
       // 人物轮廓简笔画
       ctx.fillStyle = accentColor;
-      // 头
       ctx.beginPath();
       ctx.arc(w * 0.5, h * 0.28, w * 0.1, 0, Math.PI * 2);
       ctx.fill();
-      // 身体
       ctx.beginPath();
       ctx.ellipse(w * 0.5, h * 0.55, w * 0.18, h * 0.18, 0, Math.PI, 0);
       ctx.fill();
 
       // 名字首字
-      const firstName = person.name.charAt(0);
+      var firstName = person.name.charAt(0);
       ctx.fillStyle = textColor;
       ctx.font = 'bold 72px -apple-system, "PingFang SC", sans-serif';
       ctx.textAlign = 'center';
@@ -400,7 +578,7 @@
       // 底部装饰线
       ctx.fillStyle = accentColor;
       ctx.fillRect(w * 0.35, h * 0.88, w * 0.3, 4);
-      ctx.fillStyle = `hsla(${hue}, 65%, 55%, 0.4)`;
+      ctx.fillStyle = 'hsla(' + hue + ',65%,55%,0.4)';
       ctx.fillRect(w * 0.38, h * 0.90, w * 0.24, 2);
 
       return canvas;
@@ -410,61 +588,73 @@
     //  4. 渲染所有人物卡片
     // =============================================
     function renderGallery(data, targetId) {
-      const gallery = document.getElementById('gallery');
+      var gallery = document.getElementById('gallery');
       gallery.innerHTML = '';
 
-      // 更新头部信息
       document.getElementById('headerSubtitle').textContent =
-        `共 ${data.length} 人`;
+        '共 ' + data.length + ' 人';
 
-      // 找到扫中的人
-      const scannedPerson = data.find(p => p.id === targetId);
-      if (scannedPerson) {
-        document.getElementById('headerTitle').innerHTML =
-          `📷 照片画廊 <span class="header-badge">扫到了${scannedPerson.name}</span>`;
+      var scannedPerson = null;
+      for (var i = 0; i < data.length; i++) {
+        if (data[i].id === targetId) {
+          scannedPerson = data[i];
+          break;
+        }
       }
 
-      data.forEach((person, index) => {
-        const card = document.createElement('div');
+      if (scannedPerson) {
+        document.getElementById('headerTitle').innerHTML =
+          '📷 照片画廊 <span class="header-badge">扫到了' + scannedPerson.name + '</span>';
+      }
+
+      data.forEach(function(person) {
+        var card = document.createElement('div');
         card.className = 'card';
-        card.id = `person-${person.id}`;
-        // 标记目标卡片
+        card.id = 'person-' + person.id;
         if (person.id === targetId) {
           card.classList.add('scanned');
         }
 
         // 照片区域
-        const photoWrap = document.createElement('div');
+        var photoWrap = document.createElement('div');
         photoWrap.className = 'card-photo-wrap';
 
-        // 先用 Canvas 占位图
-        const placeholder = generatePlaceholder(person);
+        // Canvas 占位图
+        var placeholder = generatePlaceholder(person);
         placeholder.className = 'card-photo-placeholder';
         photoWrap.appendChild(placeholder);
 
-        // 尝试加载真实照片
-        const img = new Image();
-        img.className = 'card-photo';
-        img.alt = person.name;
-        img.loading = 'lazy'; // 原生懒加载
-        img.decoding = 'async';
+        // 加载真实照片（如果路径不为空）
+        if (person.photo && person.photo.trim() !== '') {
+          var img = new Image();
+          img.className = 'card-photo';
+          img.alt = person.name;
+          img.loading = 'lazy';
+          img.decoding = 'async';
 
-        img.onload = function() {
-          // 照片加载成功：占位图保持（作为背景），照片淡入覆盖
-          img.classList.add('loaded');
-        };
+          var retries = 0;
+          img.onload = function() {
+            img.classList.add('loaded');
+          };
 
-        img.onerror = function() {
-          // 照片加载失败，移除 img，保留 Canvas 占位图
-          img.remove();
-        };
+          img.onerror = function() {
+            retries++;
+            if (retries <= 1) {
+              // 重试一次，加随机参数破缓存
+              setTimeout(function() {
+                img.src = person.photo + '?r=' + Date.now();
+              }, 1500);
+            } else {
+              img.remove();
+            }
+          };
 
-        // 设置 src 触发加载
-        img.src = person.photo;
-        photoWrap.appendChild(img);
+          img.src = person.photo;
+          photoWrap.appendChild(img);
+        }
 
         // "扫到你了" 标签
-        const scannedTag = document.createElement('div');
+        var scannedTag = document.createElement('div');
         scannedTag.className = 'card-scanned-tag';
         scannedTag.textContent = '📍 扫到我了';
         photoWrap.appendChild(scannedTag);
@@ -472,25 +662,25 @@
         card.appendChild(photoWrap);
 
         // 信息区
-        const info = document.createElement('div');
+        var info = document.createElement('div');
         info.className = 'card-info';
 
-        const nameEl = document.createElement('div');
+        var nameEl = document.createElement('div');
         nameEl.className = 'card-name';
         nameEl.textContent = person.name;
         info.appendChild(nameEl);
 
-        const descEl = document.createElement('div');
+        var descEl = document.createElement('div');
         descEl.className = 'card-desc';
         descEl.textContent = person.description || '';
         info.appendChild(descEl);
 
         // 标签
-        const tagsEl = document.createElement('div');
+        var tagsEl = document.createElement('div');
         tagsEl.className = 'card-tags';
         if (person.tags && person.tags.length > 0) {
-          person.tags.forEach(tag => {
-            const tagEl = document.createElement('span');
+          person.tags.forEach(function(tag) {
+            var tagEl = document.createElement('span');
             tagEl.className = 'card-tag';
             tagEl.textContent = tag;
             tagsEl.appendChild(tagEl);
@@ -509,24 +699,20 @@
     function scrollToPerson(targetId) {
       if (!targetId) return;
 
-      const targetCard = document.getElementById(`person-${targetId}`);
+      var targetCard = document.getElementById('person-' + targetId);
       if (!targetCard) return;
 
-      // 稍微延迟确保 DOM 渲染完成
-      setTimeout(() => {
-        // 平滑滚动，目标居中
+      setTimeout(function() {
         targetCard.scrollIntoView({
           behavior: 'smooth',
           block: 'center',
           inline: 'nearest'
         });
 
-        // 滚动结束后触发高亮
-        setTimeout(() => {
+        setTimeout(function() {
           targetCard.classList.add('highlight');
 
-          // 3 轮动画后移除（1.2s * 3 = 3.6s）
-          setTimeout(() => {
+          setTimeout(function() {
             targetCard.classList.remove('highlight');
           }, 3800);
         }, 600);
@@ -534,43 +720,67 @@
     }
 
     // =============================================
-    //  6. 主流程
+    //  6. 检测内容更新（用于后续访问）
     // =============================================
-    function init() {
-      // 检查数据是否存在
-      if (typeof PEOPLE_DATA === 'undefined') {
-        document.getElementById('gallery').innerHTML =
-          '<div style="text-align:center;padding:60px 20px;color:rgba(255,255,255,0.5);">⚠️ 找不到 data.js 数据文件</div>';
-        return;
+    function checkVersionUpdate() {
+      var build = window.__BUILD__;
+      var storedBuild = localStorage.getItem('gallery_build');
+
+      if (storedBuild && parseInt(storedBuild) !== build) {
+        // 页面版本已更新（用户之前看过旧版）
+        var refreshBar = document.getElementById('refreshBar');
+        refreshBar.classList.add('show');
+        // 3 秒后自动隐藏
+        setTimeout(function() {
+          refreshBar.classList.remove('show');
+        }, 8000);
       }
 
-      const data = PEOPLE_DATA;
-      const targetId = getPersonIdFromURL();
-
-      // 渲染所有卡片
-      renderGallery(data, targetId);
-
-      // 如果有目标人物，滚动过去
-      if (targetId) {
-        scrollToPerson(targetId);
-      }
+      localStorage.setItem('gallery_build', build);
     }
 
     // =============================================
-    //  7. iOS/Android 兼容处理
+    //  7. 主流程
     // =============================================
-    // 修复 iOS Safari 100dvh 问题（地址栏收起/展开）
+    function init() {
+      showLoading('正在加载…');
+
+      loadDataScript(function() {
+        var data = PEOPLE_DATA;
+        var targetId = getPersonIdFromURL();
+
+        // 渲染所有卡片
+        renderGallery(data, targetId);
+
+        // 隐藏加载遮罩
+        hideLoading();
+
+        // 如果有目标人物，滚动过去
+        if (targetId) {
+          scrollToPerson(targetId);
+        }
+
+        // 版本更新检测
+        checkVersionUpdate();
+      });
+    }
+
+    // =============================================
+    //  8. iOS/Android 兼容处理
+    // =============================================
     function setViewportHeight() {
-      const vh = window.innerHeight * 0.01;
-      document.documentElement.style.setProperty('--vh', `${vh}px`);
+      var vh = window.innerHeight * 0.01;
+      document.documentElement.style.setProperty('--vh', vh + 'px');
     }
     setViewportHeight();
     window.addEventListener('resize', setViewportHeight);
-    window.addEventListener('orientationchange', () => {
+    window.addEventListener('orientationchange', function() {
       setTimeout(setViewportHeight, 100);
     });
 
-    // DOM Ready 后启动
+    // =============================================
+    //  9. DOM Ready 后启动
+    // =============================================
     if (document.readyState === 'loading') {
       document.addEventListener('DOMContentLoaded', init);
     } else {
